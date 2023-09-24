@@ -2,14 +2,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
 
-// const currentRegion = aws.getRegion({}).then((result) => result.name);
-// Fetch the default VPC information from your AWS account:
 const vpc = new awsx.ec2.Vpc( 'infra-platform', {
   enableDnsHostnames: true,
   enableDnsSupport: true,
   tags: {
-    key: 'env',
-    value: 'production'
+    ['env']: 'production',
   }
 });
 
@@ -65,29 +62,29 @@ const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
 
   }],
   tags: {
-    key: 'env',
-    value: 'production'
+    ['env']: 'production',
   }
 });
 
-// const privateSubnetIds = vpcPrivateSubnetIds
+// dkr vpc endpoint to pull the images
 const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
+  serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds,
   tags: {
-    key: 'env',
-    value: 'production'
+    ['env']: 'production',
+    ['type']: 'dkr'
   }
 })
 
+// ecr api vpc endpoint to pull the images
 const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ap-south-1.ecr.api',
+  serviceName: 'com.amazonaws.ca-central-1.ecr.api',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds
@@ -96,7 +93,7 @@ const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
 // s3 gateway endpoint under the hood ECR uses s3
 const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
   vpcId: vpcId,
-  serviceName: 'com.amazonaws.ap-south-1.s3',
+  serviceName: 'com.amazonaws.ca-central-1.s3',
   vpcEndpointType: 'Gateway'
 })
 
@@ -104,7 +101,7 @@ const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
 const logsEndpoint = new aws.ec2.VpcEndpoint('logs', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ap-south-1.logs',
+  serviceName: 'com.amazonaws.ca-central-1.logs',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds

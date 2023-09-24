@@ -20,3 +20,15 @@ http://localhost:3000
   - this application requires an environment variabled called "ApiAddress" which will be the address of the Web Api.
 - API: ASP.NET Core 5.0 Web API
 
+# Infrastructure Diagram
+![plot](./diagram.png)
+
+# Deploy using pulumi
+- Make sure the aws and pulumi is configured.
+- Assuming ca-central-1 as the default aws region.
+- Setup pulumi with the token.
+- Run `pulum stack init prod`
+- Run `pulum up`
+- Check the preview:
+![plot](./preview.png)
+- Once completed, use the loadbalancer url from the output to check the deployment.
