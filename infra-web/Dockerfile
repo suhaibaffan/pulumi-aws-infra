@@ -15,7 +15,6 @@ COPY ["infra-web.csproj", "infra-web/"]
 RUN dotnet restore "infra-web/infra-web.csproj"
 WORKDIR "/src/infra-web"
 COPY . .
-RUN ls
 RUN dotnet build "infra-web.csproj" -c Release -o /app/build
 
 FROM build AS publish

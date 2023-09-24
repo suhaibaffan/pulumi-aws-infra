@@ -9,12 +9,12 @@ const vpc = new awsx.ec2.Vpc( 'infra-platform', {
   enableDnsSupport: true,
   // vpcEndpointSpecs: [{
   //   privateDnsEnabled: true,
-  //   serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+  //   serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
   //   vpcEndpointType: 'Interface'
   // },
   // {
   //   privateDnsEnabled: true,
-  //   serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+  //   serviceName: 'com.amazonaws.ap-south-1.ecr.api',
   //   vpcEndpointType: 'Interface'
   // }],
 });
@@ -104,7 +104,7 @@ const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
 const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+  serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds
@@ -113,7 +113,7 @@ const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
 // const dkrPublicSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
 //   vpcId: vpcId,
 //   privateDnsEnabled: true,
-//   serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+//   serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
 //   vpcEndpointType: 'Interface',
 //   securityGroupIds: [securityGroup.id],
 //   subnetIds: vpcPublicSubnetIds
@@ -122,7 +122,7 @@ const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
 const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+  serviceName: 'com.amazonaws.ap-south-1.ecr.api',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds
@@ -130,7 +130,7 @@ const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
 // const ecrEndpoint = new aws.ec2.VpcEndpoint('api', {
 //   vpcId: vpcId,
 //   privateDnsEnabled: true,
-//   serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+//   serviceName: 'com.amazonaws.ap-south-1.ecr.api',
 //   vpcEndpointType: 'Interface',
 //   securityGroupIds: [securityGroup.id],
 //   subnetIds: vpcPrivateSubnetIds
@@ -139,7 +139,7 @@ const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
 // s3 gateway endpoint under the hood ECR uses s3
 const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
   vpcId: vpcId,
-  serviceName: 'com.amazonaws.ca-central-1.s3',
+  serviceName: 'com.amazonaws.ap-south-1.s3',
   vpcEndpointType: 'Gateway'
 })
 
@@ -147,7 +147,7 @@ const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
 const logsEndpoint = new aws.ec2.VpcEndpoint('logs', {
   vpcId: vpcId,
   privateDnsEnabled: true,
-  serviceName: 'com.amazonaws.ca-central-1.logs',
+  serviceName: 'com.amazonaws.ap-south-1.logs',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds
@@ -159,8 +159,8 @@ const webRepository = new awsx.ecr.Repository("web-ecr", {
 });
 const apiRepository = new awsx.ecr.Repository("api-ecr", {});
 
-// const vpcApiEndpoint = 'vpce-07ea288ab8cab454f-b3mq5l4a.api.ecr.ca-central-1.vpce.amazonaws.com';
-// const vpcWebEndpoint = 'vpce-05cdfde3bfbc8afc7-s3cq29mu.api.ecr.ca-central-1.vpce.amazonaws.com';
+// const vpcApiEndpoint = 'vpce-07ea288ab8cab454f-b3mq5l4a.api.ecr.ap-south-1.vpce.amazonaws.com';
+// const vpcWebEndpoint = 'vpce-05cdfde3bfbc8afc7-s3cq29mu.api.ecr.ap-south-1.vpce.amazonaws.com';
 // let webImageUrl = webRepository.url;
 // let apiImageUrl = apiRepository.url;
 // const indexOfWebImageUrl = String(webImageUrl).indexOf('.com');
@@ -180,18 +180,9 @@ const apiImage = new awsx.ecr.Image("api-image", {
 });
 
 const cluster = new aws.ecs.Cluster("infra-platform", {});
-const weblb = new awsx.lb.ApplicationLoadBalancer("web-lb", {
-  listener: {
-    port: 80
-  },
-  defaultTargetGroup: {
-    port: 5000
-  },
-  subnetIds: vpcPublicSubnetIds,
-  securityGroups: [securityGroup.id],
-});
-// vpce-07ea288ab8cab454f-b3mq5l4a-ca-central-1d.api.ecr.ca-central-1.vpce.amazonaws.com
-// 940123540319.dkr.ecr.ca-central-1.amazonaws.com/api-52efe6d:a7180c185385c978936e4b8e6e3b5038ef6375a2b804ed4cde1c0b4645c81985
+
+// vpce-07ea288ab8cab454f-b3mq5l4a-ap-south-1d.api.ecr.ap-south-1.vpce.amazonaws.com
+// 940123540319.dkr.ecr.ap-south-1.amazonaws.com/api-52efe6d:a7180c185385c978936e4b8e6e3b5038ef6375a2b804ed4cde1c0b4645c81985
 
 const apiLb = new awsx.lb.ApplicationLoadBalancer('api-lb', {
   listener: {
@@ -208,11 +199,50 @@ const apiLb = new awsx.lb.ApplicationLoadBalancer('api-lb', {
   securityGroups: [securityGroup.id],
 });
 
+const appLb = new awsx.lb.ApplicationLoadBalancer('app-lb', {
+  listener: {
+    port: 80
+  },
+  defaultTargetGroup: {
+    port: 5000,
+    healthCheck: {
+      path: '/'
+    }
+  },
+  subnetIds: vpcPrivateSubnetIds,
+  securityGroups: [securityGroup.id],
+});
+
+// const webTargetGroup = new aws.lb.TargetGroup('web-tg', {
+//   port: 80,
+//   healthCheck: {
+//     path: '/'
+//   },
+//   vpcId,
+//   protocol: 'TCP',
+//   targetType: 'alb'
+// });
+
+// const weblb = new awsx.lb.NetworkLoadBalancer("web-lb", {
+//   listener: {
+//     port: 80,
+//     defaultActions: [{
+//       type: 'forward',
+//       targetGroupArn: appLb.defaultTargetGroup.arn
+//     }]
+//   },
+//   defaultTargetGroup: {
+//     port: 80,
+//     vpcId: vpcId,
+//     targetType: "alb",
+//     protocol: "TCP",
+//   },
+//   subnetIds: vpcPublicSubnetIds
+// });
+
 // const iamRole = new aws.iam.Role('ecsServiceRole', {
 
 // });
-
-const logGroup = new aws.cloudwatch.LogGroup("loggroup");
 
 const apiService = new awsx.ecs.FargateService("api", {
   cluster: cluster.arn,
@@ -261,7 +291,7 @@ const apiService = new awsx.ecs.FargateService("api", {
           //   options: {
           //     'awslogs-create-group': "true",
           //     'awslogs-group': "apiService",
-          //     'awslogs-region': "ca-central-1",
+          //     'awslogs-region': "ap-south-1",
           //     'awslogs-stream-prefix': "ecs"
           //   },
           //   secretOptions: []
@@ -301,12 +331,12 @@ const webService = new awsx.ecs.FargateService("web", {
             essential: true,
             environment: [{
               name: 'ApiAddress',
-              value: apiLb.loadBalancer.dnsName
+              value: apiLb.loadBalancer.dnsName.apply((dns) => `${dns}/WeatherForecast`)
             }],
             portMappings: [
             {
               name: 'load-balancer',
-              targetGroup: weblb.defaultTargetGroup,
+              targetGroup: appLb.defaultTargetGroup,
               containerPort: 5000,
               hostPort: 5000,
               protocol: 'tcp',
@@ -317,7 +347,7 @@ const webService = new awsx.ecs.FargateService("web", {
             //   options: {
             //     'awslogs-create-group': "true",
             //     'awslogs-group': "webService",
-            //     'awslogs-region': "ca-central-1",
+            //     'awslogs-region': "ap-south-1",
             //     'awslogs-stream-prefix': "ecs"
             //   },
             //   secretOptions: []
@@ -332,4 +362,4 @@ const webService = new awsx.ecs.FargateService("web", {
     },
 });
 
-export const url = weblb.loadBalancer.dnsName;
+export const url = appLb.loadBalancer.dnsName;
