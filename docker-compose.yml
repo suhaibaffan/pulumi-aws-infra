@@ -8,8 +8,8 @@ services:
     depends_on: 
       - infraapi
     build:
-      context: .
-      dockerfile: infra-web/Dockerfile
+      context: ./infra-web
+      dockerfile: Dockerfile
     environment: 
       ApiAddress: http://infraapi:5000/WeatherForecast
     ports:
@@ -17,7 +17,7 @@ services:
   infraapi:
     image: infraapi
     build:
-      context: .
-      dockerfile: infra-api/Dockerfile
+      context: ./infra-api
+      dockerfile: Dockerfile
     ports:
       - 5000:5000

@@ -56,14 +56,40 @@ export const vpcPublicSubnetIds = vpc.publicSubnetIds;
 
 const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
   vpcId: vpcId,
-  ingress: [{
-    description: "TLS from VPC",
-    fromPort: 443,
-    toPort: 443,
-    protocol: "tcp",
-    cidrBlocks: ['10.0.0.0/16'], // vpc default cidr created.
-    ipv6CidrBlocks: [],
-}],
+  ingress: [
+    {
+      description: "TLS from VPC Endpoint",
+      fromPort: 443,
+      toPort: 443,
+      protocol: "tcp",
+      cidrBlocks: ['10.0.0.0/16'], // vpc default cidr created.
+      ipv6CidrBlocks: [],
+    },
+    {
+      description: "Traffic for infra web from load balancer",
+      fromPort: 80,
+      toPort: 80,
+      protocol: "tcp",
+      cidrBlocks: ['0.0.0.0/0'],
+      ipv6CidrBlocks: [],
+    },
+    {
+      description: "Traffic from within the VPC Cloud for load balancers",
+      fromPort: 80,
+      toPort: 80,
+      protocol: "tcp",
+      cidrBlocks: ['10.0.0.0/16'], // only vpc ip addresses
+      ipv6CidrBlocks: [],
+    },
+    {
+      description: "Traffic between containers and target groups",
+      fromPort: 5000,
+      toPort: 5000,
+      protocol: "tcp",
+      cidrBlocks: ['10.0.0.0/16'], // only vpc ip addresses
+      ipv6CidrBlocks: [],
+    }
+  ],
   egress: [{
       fromPort: 0,
       toPort: 0,
@@ -161,7 +187,7 @@ const weblb = new awsx.lb.ApplicationLoadBalancer("web-lb", {
   defaultTargetGroup: {
     port: 5000
   },
-  subnetIds: vpcPrivateSubnetIds,
+  subnetIds: vpcPublicSubnetIds,
   securityGroups: [securityGroup.id],
 });
 // vpce-07ea288ab8cab454f-b3mq5l4a-ca-central-1d.api.ecr.ca-central-1.vpce.amazonaws.com
