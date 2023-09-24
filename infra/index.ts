@@ -7,16 +7,10 @@ import * as awsx from "@pulumi/awsx";
 const vpc = new awsx.ec2.Vpc( 'infra-platform', {
   enableDnsHostnames: true,
   enableDnsSupport: true,
-  // vpcEndpointSpecs: [{
-  //   privateDnsEnabled: true,
-  //   serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
-  //   vpcEndpointType: 'Interface'
-  // },
-  // {
-  //   privateDnsEnabled: true,
-  //   serviceName: 'com.amazonaws.ap-south-1.ecr.api',
-  //   vpcEndpointType: 'Interface'
-  // }],
+  tags: {
+    key: 'env',
+    value: 'production'
+  }
 });
 
 
@@ -25,34 +19,6 @@ const vpc = new awsx.ec2.Vpc( 'infra-platform', {
 export const vpcId = vpc.vpcId;
 export const vpcPrivateSubnetIds = vpc.privateSubnetIds;
 export const vpcPublicSubnetIds = vpc.publicSubnetIds;
-
-// let privRtAssoc = [];
-// if (Array.isArray(networkGateways)) {
-//   for (let i = 0; i < [...networkGateways].length; i++) {
-//   let natGwRoute = new aws.ec2.RouteTable("natgw-route", {
-//     vpcId: vpcId,
-//     routes: [
-//         { cidrBlock: "0.0.0.0/0", natGatewayId: networkGateways[i].id },
-//     ],
-//   });
-  
-//       privRtAssoc.push(new aws.ec2.RouteTableAssociation(`priv-rta-${i+1}`, {
-//           routeTableId: natGwRoute.id,
-//           subnetId: vpcPrivateSubnetIds[i],
-//       }));
-//   };
-// }
-// vpc.natGateways to connect with ECR
-// if (vpcPrivateSubnetIds.length && Array.isArray(vpcPrivateSubnetIds)) {
-//   for ( const [index, item] of [...vpcPrivateSubnetIds] ) {
-//     console.log(item[index])
-//     new aws.ec2.NatGateway("example", {
-//       connectivityType: "private",
-//       subnetId: item[index],
-//     });
-//   }
-// }
-
 
 const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
   vpcId: vpcId,
@@ -98,6 +64,10 @@ const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
       ipv6CidrBlocks: ["::/0"],
 
   }],
+  tags: {
+    key: 'env',
+    value: 'production'
+  }
 });
 
 // const privateSubnetIds = vpcPrivateSubnetIds
@@ -107,17 +77,12 @@ const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
   serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
   vpcEndpointType: 'Interface',
   securityGroupIds: [securityGroup.id],
-  subnetIds: vpcPrivateSubnetIds
+  subnetIds: vpcPrivateSubnetIds,
+  tags: {
+    key: 'env',
+    value: 'production'
+  }
 })
-
-// const dkrPublicSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
-//   vpcId: vpcId,
-//   privateDnsEnabled: true,
-//   serviceName: 'com.amazonaws.ap-south-1.ecr.dkr',
-//   vpcEndpointType: 'Interface',
-//   securityGroupIds: [securityGroup.id],
-//   subnetIds: vpcPublicSubnetIds
-// })
 
 const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
   vpcId: vpcId,
@@ -127,14 +92,6 @@ const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
   securityGroupIds: [securityGroup.id],
   subnetIds: vpcPrivateSubnetIds
 })
-// const ecrEndpoint = new aws.ec2.VpcEndpoint('api', {
-//   vpcId: vpcId,
-//   privateDnsEnabled: true,
-//   serviceName: 'com.amazonaws.ap-south-1.ecr.api',
-//   vpcEndpointType: 'Interface',
-//   securityGroupIds: [securityGroup.id],
-//   subnetIds: vpcPrivateSubnetIds
-// })
 
 // s3 gateway endpoint under the hood ECR uses s3
 const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
@@ -159,17 +116,6 @@ const webRepository = new awsx.ecr.Repository("web-ecr", {
 });
 const apiRepository = new awsx.ecr.Repository("api-ecr", {});
 
-// const vpcApiEndpoint = 'vpce-07ea288ab8cab454f-b3mq5l4a.api.ecr.ap-south-1.vpce.amazonaws.com';
-// const vpcWebEndpoint = 'vpce-05cdfde3bfbc8afc7-s3cq29mu.api.ecr.ap-south-1.vpce.amazonaws.com';
-// let webImageUrl = webRepository.url;
-// let apiImageUrl = apiRepository.url;
-// const indexOfWebImageUrl = String(webImageUrl).indexOf('.com');
-// String(webImageUrl).substring(indexOfWebImageUrl);
-// String(webImageUrl).replace('.com', vpcWebEndpoint);
-// const indexOfUrl = String(apiImageUrl).indexOf('.com');
-// String(apiImageUrl).substring(indexOfUrl);
-// String(apiImageUrl).replace('.com', vpcApiEndpoint);
-
 const webImage = new awsx.ecr.Image("web-image", {
     repositoryUrl: webRepository.url,
     path: '../infra-web',
@@ -179,10 +125,7 @@ const apiImage = new awsx.ecr.Image("api-image", {
     path: '../infra-api',
 });
 
-const cluster = new aws.ecs.Cluster("infra-platform", {});
-
-// vpce-07ea288ab8cab454f-b3mq5l4a-ap-south-1d.api.ecr.ap-south-1.vpce.amazonaws.com
-// 940123540319.dkr.ecr.ap-south-1.amazonaws.com/api-52efe6d:a7180c185385c978936e4b8e6e3b5038ef6375a2b804ed4cde1c0b4645c81985
+const cluster = new aws.ecs.Cluster("infra-platform", { tags: { ['env']: 'production' }});
 
 const apiLb = new awsx.lb.ApplicationLoadBalancer('api-lb', {
   listener: {
@@ -197,6 +140,10 @@ const apiLb = new awsx.lb.ApplicationLoadBalancer('api-lb', {
   internal: true,
   subnetIds: vpcPrivateSubnetIds,
   securityGroups: [securityGroup.id],
+  tags: {
+    ['env']: 'production',
+    ['type']: 'internal'
+  }
 });
 
 const appLb = new awsx.lb.ApplicationLoadBalancer('app-lb', {
@@ -211,34 +158,48 @@ const appLb = new awsx.lb.ApplicationLoadBalancer('app-lb', {
   },
   subnetIds: vpcPrivateSubnetIds,
   securityGroups: [securityGroup.id],
+  tags: {
+    ['env']: 'production',
+    ['type']: 'internal'
+  }
 });
 
-// const webTargetGroup = new aws.lb.TargetGroup('web-tg', {
-//   port: 80,
-//   healthCheck: {
-//     path: '/'
-//   },
-//   vpcId,
-//   protocol: 'TCP',
-//   targetType: 'alb'
-// });
+const webTargetGroup = new aws.lb.TargetGroup('web-tg', {
+  port: 80,
+  healthCheck: {
+    path: '/'
+  },
+  vpcId,
+  protocol: 'TCP',
+  targetType: 'alb'
+});
 
-// const weblb = new awsx.lb.NetworkLoadBalancer("web-lb", {
-//   listener: {
-//     port: 80,
-//     defaultActions: [{
-//       type: 'forward',
-//       targetGroupArn: appLb.defaultTargetGroup.arn
-//     }]
-//   },
-//   defaultTargetGroup: {
-//     port: 80,
-//     vpcId: vpcId,
-//     targetType: "alb",
-//     protocol: "TCP",
-//   },
-//   subnetIds: vpcPublicSubnetIds
-// });
+const testTargetGroupAttachment = new aws.lb.TargetGroupAttachment("web-tg-attachement", {
+  targetGroupArn: webTargetGroup.arn,
+  targetId: appLb.loadBalancer.arn,
+  port: 80,
+});
+
+const weblb = new awsx.lb.NetworkLoadBalancer("web-lb", {
+  listener: {
+    port: 80,
+    defaultActions: [{
+      type: 'forward',
+      targetGroupArn: webTargetGroup.arn
+    }]
+  },
+  defaultTargetGroup: {
+    port: 80,
+    vpcId: vpcId,
+    targetType: "alb",
+    protocol: "TCP",
+  },
+  subnetIds: vpcPublicSubnetIds,
+  tags: {
+    ['env']: 'production',
+    ['type']: 'external'
+  }
+});
 
 // const iamRole = new aws.iam.Role('ecsServiceRole', {
 
@@ -246,7 +207,6 @@ const appLb = new awsx.lb.ApplicationLoadBalancer('app-lb', {
 
 const apiService = new awsx.ecs.FargateService("api", {
   cluster: cluster.arn,
-  // iamRole: '',
   name: 'apiService',
   networkConfiguration: {
       /**
@@ -275,27 +235,7 @@ const apiService = new awsx.ecs.FargateService("api", {
             protocol: 'tcp',
             appProtocol: 'http'
           }
-          //   {
-          //   name: "api-5000-tcp",
-          //   containerPort: 5000,
-          //   hostPort: 5000,
-          //   protocol: "tcp",
-          //   appProtocol: "http"
-          // }, {
-          //   name: 'internal',
-          //   targetGroup: apiLb.defaultTargetGroup
-          // }
         ],
-          // logConfiguration: {
-          //   logDriver: 'awslogs',
-          //   options: {
-          //     'awslogs-create-group': "true",
-          //     'awslogs-group': "apiService",
-          //     'awslogs-region': "ap-south-1",
-          //     'awslogs-stream-prefix': "ecs"
-          //   },
-          //   secretOptions: []
-          // }
       },
       runtimePlatform: {
         cpuArchitecture: "ARM64",
@@ -303,8 +243,11 @@ const apiService = new awsx.ecs.FargateService("api", {
       },
       cpu: "256",
       memory: "512"
-      // pidMode: 'host'
   },
+  tags: {
+    ['env']: 'production',
+    ['type']: 'api'
+  }
 });
 
 const webService = new awsx.ecs.FargateService("web", {
@@ -325,13 +268,10 @@ const webService = new awsx.ecs.FargateService("web", {
             memory: 512,
             name: 'infra-web',
             image: webImage.imageUri,
-            // repositoryCredentials: {
-            //   credentialsParameter: 
-            // },
             essential: true,
             environment: [{
               name: 'ApiAddress',
-              value: apiLb.loadBalancer.dnsName.apply((dns) => `${dns}/WeatherForecast`)
+              value: apiLb.loadBalancer.dnsName.apply((dns) => `http://${dns}/WeatherForecast`)
             }],
             portMappings: [
             {
@@ -342,16 +282,6 @@ const webService = new awsx.ecs.FargateService("web", {
               protocol: 'tcp',
               appProtocol: 'http'
             }],
-            // logConfiguration: {
-            //   logDriver: 'awslogs',
-            //   options: {
-            //     'awslogs-create-group': "true",
-            //     'awslogs-group': "webService",
-            //     'awslogs-region': "ap-south-1",
-            //     'awslogs-stream-prefix': "ecs"
-            //   },
-            //   secretOptions: []
-            // }
         },
         runtimePlatform: {
           cpuArchitecture: "ARM64",
@@ -360,6 +290,10 @@ const webService = new awsx.ecs.FargateService("web", {
         cpu: "256",
         memory: "512"
     },
+    tags: {
+      ['env']: 'production',
+      ['type']: 'web'
+    }
 });
 
-export const url = appLb.loadBalancer.dnsName;
+export const url = weblb.loadBalancer.dnsName;
