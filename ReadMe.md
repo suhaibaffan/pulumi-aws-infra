@@ -25,6 +25,9 @@ http://localhost:3000
 
 # Deploy using pulumi
 - Make sure the aws and pulumi is configured.
+- Make sure to have Node installed
+- Run `cd infra`
+- Run `npm install`
 - Assuming ca-central-1 as the default aws region.
 - Setup pulumi with the token.
 - Run `pulum stack init prod`
