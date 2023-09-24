@@ -2,20 +2,29 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
 
-const currentRegion = aws.getRegion({});
+// const currentRegion = aws.getRegion({}).then((result) => result.name);
 // Fetch the default VPC information from your AWS account:
-const vpc = new awsx.ec2.Vpc( 'infra', {
-  vpcEndpointSpecs: [{
-    serviceName: `com.amazonaws.${currentRegion}.ecr.api`,  // enable 
-    privateDnsEnabled: true,
-  }]
+const vpc = new awsx.ec2.Vpc( 'infra-platform', {
+  enableDnsHostnames: true,
+  enableDnsSupport: true,
+  // vpcEndpointSpecs: [{
+  //   privateDnsEnabled: true,
+  //   serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+  //   vpcEndpointType: 'Interface'
+  // },
+  // {
+  //   privateDnsEnabled: true,
+  //   serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+  //   vpcEndpointType: 'Interface'
+  // }],
 });
+
+
 
 // Export a few interesting fields to make them easy to use:
 export const vpcId = vpc.vpcId;
 export const vpcPrivateSubnetIds = vpc.privateSubnetIds;
 export const vpcPublicSubnetIds = vpc.publicSubnetIds;
-// export const networkGateways = vpc.natGateways;
 
 // let privRtAssoc = [];
 // if (Array.isArray(networkGateways)) {
@@ -33,19 +42,28 @@ export const vpcPublicSubnetIds = vpc.publicSubnetIds;
 //       }));
 //   };
 // }
-// // vpc.natGateways to connect with ECR
+// vpc.natGateways to connect with ECR
 // if (vpcPrivateSubnetIds.length && Array.isArray(vpcPrivateSubnetIds)) {
 //   for ( const [index, item] of [...vpcPrivateSubnetIds] ) {
-//     console.log(item[`[${index}]`])
+//     console.log(item[index])
 //     new aws.ec2.NatGateway("example", {
 //       connectivityType: "private",
-//       subnetId: item[`[${index}]`],
+//       subnetId: item[index],
 //     });
 //   }
 // }
 
-const securityGroup = new aws.ec2.SecurityGroup("securityGroup", {
+
+const securityGroup = new aws.ec2.SecurityGroup("infra-sg", {
   vpcId: vpcId,
+  ingress: [{
+    description: "TLS from VPC",
+    fromPort: 443,
+    toPort: 443,
+    protocol: "tcp",
+    cidrBlocks: ['10.0.0.0/16'], // vpc default cidr created.
+    ipv6CidrBlocks: [],
+}],
   egress: [{
       fromPort: 0,
       toPort: 0,
@@ -56,36 +74,100 @@ const securityGroup = new aws.ec2.SecurityGroup("securityGroup", {
   }],
 });
 
-const webRepository = new awsx.ecr.Repository("web", {
+// const privateSubnetIds = vpcPrivateSubnetIds
+const dkrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
+  vpcId: vpcId,
+  privateDnsEnabled: true,
+  serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+  vpcEndpointType: 'Interface',
+  securityGroupIds: [securityGroup.id],
+  subnetIds: vpcPrivateSubnetIds
+})
+
+// const dkrPublicSubnetEndpoint = new aws.ec2.VpcEndpoint('dkr', {
+//   vpcId: vpcId,
+//   privateDnsEnabled: true,
+//   serviceName: 'com.amazonaws.ca-central-1.ecr.dkr',
+//   vpcEndpointType: 'Interface',
+//   securityGroupIds: [securityGroup.id],
+//   subnetIds: vpcPublicSubnetIds
+// })
+
+const ecrPrivateSubnetEndpoint = new aws.ec2.VpcEndpoint('api', {
+  vpcId: vpcId,
+  privateDnsEnabled: true,
+  serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+  vpcEndpointType: 'Interface',
+  securityGroupIds: [securityGroup.id],
+  subnetIds: vpcPrivateSubnetIds
+})
+// const ecrEndpoint = new aws.ec2.VpcEndpoint('api', {
+//   vpcId: vpcId,
+//   privateDnsEnabled: true,
+//   serviceName: 'com.amazonaws.ca-central-1.ecr.api',
+//   vpcEndpointType: 'Interface',
+//   securityGroupIds: [securityGroup.id],
+//   subnetIds: vpcPrivateSubnetIds
+// })
+
+// s3 gateway endpoint under the hood ECR uses s3
+const s3Endpoint = new aws.ec2.VpcEndpoint('s3', {
+  vpcId: vpcId,
+  serviceName: 'com.amazonaws.ca-central-1.s3',
+  vpcEndpointType: 'Gateway'
+})
+
+// cloudwatch vpc endpoint interface under the hood ECR uses s3
+const logsEndpoint = new aws.ec2.VpcEndpoint('logs', {
+  vpcId: vpcId,
+  privateDnsEnabled: true,
+  serviceName: 'com.amazonaws.ca-central-1.logs',
+  vpcEndpointType: 'Interface',
+  securityGroupIds: [securityGroup.id],
+  subnetIds: vpcPrivateSubnetIds
+})
+
+
+const webRepository = new awsx.ecr.Repository("web-ecr", {
   
 });
-const apiRepository = new awsx.ecr.Repository("api", {});
+const apiRepository = new awsx.ecr.Repository("api-ecr", {});
 
+// const vpcApiEndpoint = 'vpce-07ea288ab8cab454f-b3mq5l4a.api.ecr.ca-central-1.vpce.amazonaws.com';
+// const vpcWebEndpoint = 'vpce-05cdfde3bfbc8afc7-s3cq29mu.api.ecr.ca-central-1.vpce.amazonaws.com';
+// let webImageUrl = webRepository.url;
+// let apiImageUrl = apiRepository.url;
+// const indexOfWebImageUrl = String(webImageUrl).indexOf('.com');
+// String(webImageUrl).substring(indexOfWebImageUrl);
+// String(webImageUrl).replace('.com', vpcWebEndpoint);
+// const indexOfUrl = String(apiImageUrl).indexOf('.com');
+// String(apiImageUrl).substring(indexOfUrl);
+// String(apiImageUrl).replace('.com', vpcApiEndpoint);
 
-const webImage = new awsx.ecr.Image("web", {
+const webImage = new awsx.ecr.Image("web-image", {
     repositoryUrl: webRepository.url,
     path: '../infra-web',
 });
-const apiImage = new awsx.ecr.Image("api", {
+const apiImage = new awsx.ecr.Image("api-image", {
     repositoryUrl: apiRepository.url,
     path: '../infra-api',
 });
 
-const cluster = new aws.ecs.Cluster("infra", {});
-const weblb = new awsx.lb.ApplicationLoadBalancer("web", {
+const cluster = new aws.ecs.Cluster("infra-platform", {});
+const weblb = new awsx.lb.ApplicationLoadBalancer("web-lb", {
   listener: {
     port: 80
   },
   defaultTargetGroup: {
     port: 5000
   },
-  subnetIds: vpcPublicSubnetIds,
+  subnetIds: vpcPrivateSubnetIds,
   securityGroups: [securityGroup.id],
 });
+// vpce-07ea288ab8cab454f-b3mq5l4a-ca-central-1d.api.ecr.ca-central-1.vpce.amazonaws.com
+// 940123540319.dkr.ecr.ca-central-1.amazonaws.com/api-52efe6d:a7180c185385c978936e4b8e6e3b5038ef6375a2b804ed4cde1c0b4645c81985
 
-
-
-const apiLb = new awsx.lb.ApplicationLoadBalancer('api', {
+const apiLb = new awsx.lb.ApplicationLoadBalancer('api-lb', {
   listener: {
     port: 80
   },
@@ -100,9 +182,16 @@ const apiLb = new awsx.lb.ApplicationLoadBalancer('api', {
   securityGroups: [securityGroup.id],
 });
 
+// const iamRole = new aws.iam.Role('ecsServiceRole', {
 
-const apiService = new awsx.ecs.FargateService("infra-api", {
+// });
+
+const logGroup = new aws.cloudwatch.LogGroup("loggroup");
+
+const apiService = new awsx.ecs.FargateService("api", {
   cluster: cluster.arn,
+  // iamRole: '',
+  name: 'apiService',
   networkConfiguration: {
       /**
        * Subnets associated with the task or service.
@@ -112,6 +201,9 @@ const apiService = new awsx.ecs.FargateService("infra-api", {
   },
   taskDefinitionArgs: {
       family: 'infra-api',
+      logGroup: {
+        skip: true,
+      },
       container: {
           cpu: 256,
           memory: 512,
@@ -142,7 +234,7 @@ const apiService = new awsx.ecs.FargateService("infra-api", {
           //   logDriver: 'awslogs',
           //   options: {
           //     'awslogs-create-group': "true",
-          //     'awslogs-group': "/ecs/infra-web",
+          //     'awslogs-group': "apiService",
           //     'awslogs-region': "ca-central-1",
           //     'awslogs-stream-prefix': "ecs"
           //   },
@@ -159,16 +251,19 @@ const apiService = new awsx.ecs.FargateService("infra-api", {
   },
 });
 
-console.log(apiService.service);
-
-const webService = new awsx.ecs.FargateService("infra-web", {
+const webService = new awsx.ecs.FargateService("web", {
     cluster: cluster.arn,
+    name: 'webService',
+    // assignPublicIp: true,
     networkConfiguration: {
-      subnets: vpcPublicSubnetIds,
+      subnets: vpcPrivateSubnetIds,
       securityGroups: [securityGroup.id]
     },
     taskDefinitionArgs: {
         family: 'infra-web',
+        logGroup: {
+          skip: true,
+        },
         container: {
             cpu: 256,
             memory: 512,
@@ -195,7 +290,7 @@ const webService = new awsx.ecs.FargateService("infra-web", {
             //   logDriver: 'awslogs',
             //   options: {
             //     'awslogs-create-group': "true",
-            //     'awslogs-group': "/ecs/infra-web",
+            //     'awslogs-group': "webService",
             //     'awslogs-region': "ca-central-1",
             //     'awslogs-stream-prefix': "ecs"
             //   },
