@@ -281,7 +281,7 @@ const webService = new awsx.ecs.FargateService("web", {
             }],
         },
         runtimePlatform: {
-          cpuArchitecture: "ARM64",
+          cpuArchitecture: "ARM64", // if not arm cpu use X86_64
           operatingSystemFamily: "LINUX"
         },
         cpu: "256",
